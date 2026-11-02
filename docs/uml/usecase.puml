@@ -1,0 +1,53 @@
+@startuml usecase
+' COLORS web application - Use Case Diagram
+' Derived from public/index.html, public/color.html, public/js/code.js and api/*.php
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #F5F9FF
+  BorderColor #2B5797
+}
+
+title COLORS Web Application - Use Case Diagram
+
+actor "User" as User
+actor "MySQL Database\n(COP4331)" as DB <<system>>
+
+rectangle "COLORS Web Application" {
+  usecase "Log In" as UC_Login
+  usecase "Validate Credentials\n(Login.php)" as UC_Validate
+  usecase "Create Session Cookie\n(20 min expiry)" as UC_Cookie
+  usecase "Verify Session\n(readCookie on color.html load)" as UC_Verify
+  usecase "Add Color" as UC_Add
+  usecase "Search Colors" as UC_Search
+  usecase "Log Out" as UC_Logout
+}
+
+User --> UC_Login
+User --> UC_Add
+User --> UC_Search
+User --> UC_Logout
+
+UC_Login ..> UC_Validate : <<include>>
+UC_Login ..> UC_Cookie : <<include>>
+UC_Add ..> UC_Verify : <<include>>
+UC_Search ..> UC_Verify : <<include>>
+
+UC_Validate --> DB : SELECT from Users
+UC_Add --> DB : INSERT into Colors
+UC_Search --> DB : SELECT from Colors\n(Name LIKE %term%)
+
+note right of UC_Verify
+  If no valid userId cookie exists,
+  the user is redirected to index.html
+  (must log in first).
+end note
+
+note bottom of UC_Search
+  Only colors belonging to the
+  logged-in user (UserID) are returned.
+end note
+
+@enduml
