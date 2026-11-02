@@ -1,0 +1,82 @@
+@startuml activity
+' COLORS web application - Activity Diagram
+' Models the full user session: login -> add/search colors -> logout
+' Derived from public/js/code.js and api/Login.php, AddColor.php, SearchColors.php
+
+title COLORS Web Application - Activity Diagram
+
+|User|
+start
+:Open index.html;
+:Enter username and password;
+:Click "Do It" button;
+
+|Browser (code.js)|
+:doLogin(): clear loginResult;
+:Build JSON {login, password};
+:POST to /LAMPAPI/Login.php;
+
+|Server (PHP + MySQL)|
+:Login.php: SELECT ID, firstName, lastName\nFROM Users WHERE Login=? AND Password=?;
+if (Matching row found?) then (yes)
+  :Return {id, firstName, lastName, error:""};
+else (no)
+  :Return {id:0, ..., error:"No Records Found"};
+endif
+
+|Browser (code.js)|
+if (userId < 1?) then (yes)
+  :Show "User/Password combination incorrect";
+  stop
+else (no)
+  :Store firstName, lastName;
+  :saveCookie() (expires in 20 minutes);
+  :Redirect to color.html;
+endif
+
+:readCookie() on page load;
+if (userId found in cookie?) then (no)
+  :Redirect to index.html;
+  stop
+else (yes)
+endif
+
+repeat
+  |User|
+  :Choose an action on color.html;
+  switch (Action?)
+  case (Search Color)
+    :Enter search text;\nclick "Search Color";
+    |Browser (code.js)|
+    :searchColor(): POST {search, userId}\nto /LAMPAPI/SearchColors.php;
+    |Server (PHP + MySQL)|
+    :SELECT Name FROM Colors\nWHERE Name LIKE %search% AND UserID=?;
+    if (Any results?) then (yes)
+      :Return {results:[...], error:""};
+    else (no)
+      :Return {error:"No Records Found"};
+    endif
+    |Browser (code.js)|
+    :Show "Color(s) has been retrieved";
+    :Render results list in #colorList;
+  case (Add Color)
+    |User|
+    :Enter color name;\nclick "Add Color";
+    |Browser (code.js)|
+    :addColor(): POST {color, userId}\nto /LAMPAPI/AddColor.php;
+    |Server (PHP + MySQL)|
+    :INSERT INTO Colors (UserId, Name)\nVALUES (?, ?);
+    :Return {error:""};
+    |Browser (code.js)|
+    :Show "Color has been added";
+  endswitch
+  |User|
+repeat while (Log out?) is (no)
+-> yes (click "Log Out");
+|Browser (code.js)|
+:doLogout(): reset userId, firstName, lastName;
+:Expire cookie;
+:Redirect to index.html;
+stop
+
+@enduml
